@@ -1,0 +1,429 @@
+{
+  "name": "YoutubePipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "12bES542itCTPTs32jopyiYc1UUjm3jmfK70f3VIqGxQ",
+          "mode": "list",
+          "cachedResultName": "YT Summary",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12bES542itCTPTs32jopyiYc1UUjm3jmfK70f3VIqGxQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12bES542itCTPTs32jopyiYc1UUjm3jmfK70f3VIqGxQ/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        220
+      ],
+      "id": "1985c38a-716c-4b80-bd8a-c7160aa9192e",
+      "name": "Google Sheets Trigger",
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "NyuVN37NQOoIKuss",
+          "name": "Google Sheets Trigger account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "Replace with APIFY TOKEN",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"videoUrl\":\"{{ $('Google Sheets Trigger').item.json.URL }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1280,
+        0
+      ],
+      "id": "fa1c5627-21d2-43c8-bded-f0f1d66f984b",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1840,
+        0
+      ],
+      "id": "bbe59c72-185e-4d66-b0d4-ae176949c5a8",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "fieldsToSummarize": {
+          "values": [
+            {
+              "aggregation": "concatenate",
+              "field": "text",
+              "separateBy": " "
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.summarize",
+      "typeVersion": 1.1,
+      "position": [
+        2020,
+        0
+      ],
+      "id": "80c36065-c504-41f5-ba58-6f144d2bac78",
+      "name": "Summarize"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const text = $json.concatenated_text || \"\";\n\nlet matchSentences = text.match(/[^.!?]+[.!?]+/g);\n\nlet sentences = Array.isArray(matchSentences) ? matchSentences : [];\n\nif (sentences.length === 0) {\n  const words = text.split(/\\s+/);\n  sentences = [];\n  for (let i = 0; i < words.length; i += 20) {\n    const chunk = words.slice(i, i + 20).join(\" \");\n    sentences.push(chunk + \".\");\n  }\n}\n\nconst summarySentences = sentences\n  .sort((a, b) => b.length - a.length)\n  .slice(0, 4)\n  .map(s => \"- \" + s.trim()); // bullet point format\n\nconst finalSummary = `**Summary of Transcript**\\n\\n${summarySentences.join(\"\\n\")}`;\n\nreturn {\n  summary: finalSummary\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        0
+      ],
+      "id": "ce9d02f7-2b3c-4591-95ac-f92b269796b5",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "12bES542itCTPTs32jopyiYc1UUjm3jmfK70f3VIqGxQ",
+          "mode": "list",
+          "cachedResultName": "YT Summary",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12bES542itCTPTs32jopyiYc1UUjm3jmfK70f3VIqGxQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12bES542itCTPTs32jopyiYc1UUjm3jmfK70f3VIqGxQ/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "URL": "={{ $('Google Sheets Trigger').item.json.URL }}",
+            "Transcript": "={{ $('Summarize').item.json.concatenated_text }}",
+            "summary": "={{ $json.summary }}"
+          },
+          "matchingColumns": [
+            "URL"
+          ],
+          "schema": [
+            {
+              "id": "URL",
+              "displayName": "URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Transcript",
+              "displayName": "Transcript",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        2360,
+        0
+      ],
+      "id": "ac14a68a-f261-478d-b498-69e8d0bd2f12",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "NdkqrOsx5YsQUlK0",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        0
+      ],
+      "id": "74587f32-6ef9-4455-994a-7db2aebb08ff",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "50a3fbbb-cc3d-476b-a5c8-3e0b9e3edf28",
+              "name": "start",
+              "value": "={{ $json.start }}",
+              "type": "string"
+            },
+            {
+              "id": "c6a750d9-a314-40c9-93ab-ad823c8e2d76",
+              "name": "dur",
+              "value": "={{ $json.dur }}",
+              "type": "string"
+            },
+            {
+              "id": "18192c09-2089-4eba-a928-c0684de31c55",
+              "name": "text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "e6da04a0-f0b5-4ce7-9e41-3421e32792a4",
+              "name": "end",
+              "value": "={{ $json[\"start\"] + $json[\"dur\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1680,
+        0
+      ],
+      "id": "26fa8b7c-eb69-459f-a434-961b0009aea7",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4c09db01-bf41-4ae0-ae1b-f53adec50715",
+              "name": "videoFile",
+              "value": "={{$node[\"Download Video\"].json[\"stdout\"].match(/downloads\\\\[^\\s]+?\\.(mp4|mkv|webm)/)[0].trim().replace(/\\\\/g, '/')}}\n",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        700,
+        0
+      ],
+      "id": "f89193ad-dbe1-410f-bd5e-dead3b11716c",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "command": "=yt-dlp -o \"downloads/video.%(id)s.%(ext)s\" \"{{$json.URL}}\"\n"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        520,
+        0
+      ],
+      "id": "b802f33b-4b98-4e0c-bed6-8738e76dd542",
+      "name": "Download Video"
+    },
+    {
+      "parameters": {
+        "command": "={{\n  (() => {\n    const file = $json.videoFile.trim(); // Trims accidental trailing spaces or newlines\n    const name = file.split('/').pop().split('.').slice(0, -1).join('.');\n    return `if not exist niranjan mkdir niranjan && ffmpeg -ss 0 -i \"${file}\" -t 10 -y \"clips/${name}_clip1.mp4\" && ffmpeg -ss 10 -i \"${file}\" -t 10 -y \"clips/${name}_clip2.mp4\" && ffmpeg -ss 20 -i \"${file}\" -t 10 -y \"clips/${name}_clip3.mp4\" && ffmpeg -ss 30 -i \"${file}\" -t 10 -y \"clips/${name}_clip4.mp4\"`;\n  })()\n}}\n"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1080,
+        0
+      ],
+      "id": "a23ed8aa-ccda-4352-ad30-8f2c1afd642c",
+      "name": "Execute Command"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Sheets Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Video": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "de3f17b2-0dbd-43e1-936c-bd79715dfc96",
+  "meta": {
+    "instanceId": "425764543fbcd9a899ba6e754a22c8a49d27686749248ea4c171670905c58548"
+  },
+  "id": "UJbZIykgRZBvDsJf",
+  "tags": []
+}
